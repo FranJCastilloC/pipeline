@@ -44,7 +44,7 @@ def data_manager(start_date, end_date):
 if __name__ == "__main__":
     start_date = "2025-06-17"
     end_date = "2025-06-17"
-    datos = get_dataset(start_date, end_date, "BB_ResumenGeneralMercado")
+    datos = data_manager(start_date, end_date)
 
     for key, df in datos.items():
         print(f"{key}: {df.shape}")
