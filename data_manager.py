@@ -4,7 +4,7 @@ import sys
 import os
 import pandas as pd
 from transformers.Sheet_transformers.BB_ResumenGeneralMercado import transform_resumen_general_mercado
-from BB_ResumenGeneralMercado_import import insert_data
+from loading.BB_ResumenGeneralMercado_import import insert_data
 
 # Agregar el directorio raíz del proyecto al path para importaciones
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
