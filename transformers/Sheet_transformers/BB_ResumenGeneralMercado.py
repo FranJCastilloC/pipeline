@@ -1,5 +1,5 @@
 """
-Transformador para la hoja ResumenGeneralMercado.
+Transformador para la hoja ResumenGeneralmercado.
 Desarrollo y limpieza de datos.
 """
 
@@ -12,10 +12,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 def transform_resumen_general_mercado(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Transforma el DataFrame de ResumenGeneralMercado.
+    Transforma el DataFrame de ResumenGeneralmercado.
     
     Args:
-        df (pd.DataFrame): DataFrame original de ResumenGeneralMercado
+        df (pd.DataFrame): DataFrame original de ResumenGeneralmercado
         
     Returns:
         pd.DataFrame: DataFrame transformado
@@ -76,16 +76,24 @@ def transform_resumen_general_mercado(df: pd.DataFrame) -> pd.DataFrame:
         Define los nombres de las columnas según el orden especificado.
         """
         df.columns = [
-            "Mercado", 
-            "Transado USD", 
-            "USD Equivalente DOP",
-            "Transado DOP",
-            "Total Transado DOP",
-             "Fecha"
+            "mercado", 
+            'transado_usd',
+            'usd_equivalente_dop',
+            'transado_dop',
+            'total_transado_dop',
+            'fecha'
         ]
         
-        # Eliminar filas donde la columna "Mercado" tenga valores nulos
-        df = df.dropna(subset=["Mercado"]).reset_index(drop=True)
+        # Limpiar el campo mercado eliminando espacios en blanco y caracteres especiales
+        df['mercado'] = df['mercado'].str.strip().str.replace('\n', ' ').str.replace('\r', ' ')
+        
+        # Eliminar caracteres especiales y normalizar espacios múltiples
+        df['mercado'] = df['mercado'].str.replace(r'\s+', ' ', regex=True)
+        
+        # Convertir a mayúsculas para consistencia
+        df['mercado'] = df['mercado'].str.upper()
+        # Eliminar filas donde la columna "mercado" tenga valores nulos
+        df = df.dropna(subset=["mercado"]).reset_index(drop=True)
         
         return df
     
