@@ -65,13 +65,3 @@ def main(start_date, end_date):
     
     return all_data
 
-if __name__ == "__main__":
-    start_date = "2025-03-19"
-    end_date = datetime.date.today().strftime('%Y-%m-%d')
-    data = main(start_date, end_date)
-    
-    # Visualizar la información de los DataFrames obtenidos
-    for key, df in data.items():
-        print(f"{key}: {df.shape}")
-
-
