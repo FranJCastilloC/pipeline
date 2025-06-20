@@ -1,6 +1,8 @@
 """
 Transformador para la hoja ResumenGeneralmercado.
 Desarrollo y limpieza de datos.
+#Esta pendiente el cambio de las funciones de limpieza
+
 """
 
 import pandas as pd

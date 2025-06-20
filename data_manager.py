@@ -2,29 +2,22 @@ from extraction.scraper import main
 import datetime
 import sys
 import os
-import pandas as pd
-from transformers.Sheet_transformers.BB_ResumenGeneralMercado import transform_resumen_general_mercado
-from loading.BB_ResumenGeneralMercado_import import insert_data
 
 # Agregar el directorio raíz del proyecto al path para importaciones
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+# Importar transformadores y funciones de inserción
+from transformers.Sheet_transformers.BB_ResumenGeneralMercado import transform_resumen_general_mercado
+from transformers.Sheet_transformers.BB_RFVTransPuestoBolsaMP import transform_rfv_trans_puesto_bolsa_mp
+from loading.BB_ResumenGeneralMercado_import import insert_data as insert_resumen_general
+from loading.BB_RFVTransPuestoBolsaMP_import import insert_data as insert_rfv_trans_puesto
 
 def get_dataset(start_date, end_date, sheet_name):
     """
     Descarga y retorna solo el DataFrame de la hoja solicitada.
-    Esta funcion solo la utilizamos en las pruebas separadas de cada transformador.
-    
-    Args:
-        start_date (str): Fecha de inicio en formato 'YYYY-MM-DD'
-        end_date (str): Fecha de fin en formato 'YYYY-MM-DD'
-        sheet_name (str): Nombre de la hoja a extraer (ej: 'BB_ResumenGeneralMercado')
-        
-    Returns:
-        pd.DataFrame: DataFrame de la hoja solicitada o None si no se encuentra
     """
     data = main(start_date, end_date, [sheet_name])
     
-    # Buscar la clave que contenga el nombre de la hoja (con fecha)
     for key, df in data.items():
         if sheet_name in key:
             return df
@@ -32,8 +25,7 @@ def get_dataset(start_date, end_date, sheet_name):
 
 def data_manager(start_date, end_date):
     """
-    Gestiona la extracción de datos de los boletines.
-    Retorna todos los datasets configurados.
+    Gestiona la extracción, transformación e inserción de datos de los boletines.
     """
     data_sets = {
         "BB_ResumenGeneralMercado",
@@ -45,87 +37,44 @@ def data_manager(start_date, end_date):
         "BB_RentaFijaOperacionesFuturasA",
         "BB_RFEmisionesCorpV"
     }
-
-    sheets_to_extract = list(data_sets)
-    return main(start_date, end_date, sheets_to_extract)
-
-def apply_transformers_and_consolidate(datos):
-    """
-    Aplica transformadores a cada DataFrame y los consolida en un solo DataFrame.
     
-    Args:
-        datos (dict): Diccionario con DataFrames extraídos
-        
-    Returns:
-        dict: Diccionario con DataFrames consolidados por tipo de hoja
-    """
-    data_transformers = {
-        "BB_ResumenGeneralMercado": transform_resumen_general_mercado
+    # Diccionario de transformadores
+    transformers = {
+        "BB_ResumenGeneralMercado": transform_resumen_general_mercado,
+        "BB_RFVTransPuestoBolsaMP": transform_rfv_trans_puesto_bolsa_mp,
+        # Agregar más transformadores aquí cuando estén disponibles
     }
     
-    consolidated_data = {}
+    # Diccionario de funciones de inserción
+    inserters = {
+        "BB_ResumenGeneralMercado": insert_resumen_general,
+        "BB_RFVTransPuestoBolsaMP": insert_rfv_trans_puesto,
+        # Agregar más funciones de inserción aquí cuando estén disponibles
+    }
     
-    # Agrupar DataFrames por tipo de hoja (sin fecha)
-    for key, df in datos.items():
-        # Extraer el nombre base de la hoja (sin fecha)
-        base_sheet_name = None
-        for sheet_name in data_transformers.keys():
-            if sheet_name in key:
-                base_sheet_name = sheet_name
-                break
+    sheets_to_extract = list(data_sets)
+    datos = main(start_date, end_date, sheets_to_extract)
+    
+    for sheet_name, df in datos.items():
+        # Obtener el nombre base de la hoja (sin fecha)
+        base_name = next((name for name in data_sets if name in sheet_name), sheet_name)
         
-        if base_sheet_name and base_sheet_name in data_transformers:
+        # Si existe un transformador para esta hoja, aplicarlo
+        if base_name in transformers:
             try:
-                # Aplicar transformador
-                transformed_df = data_transformers[base_sheet_name](df)
+                df_transformed = transformers[base_name](df)
+                print(f"\nTransformación exitosa para {base_name}")
                 
-                # Agregar al DataFrame consolidado
-                if base_sheet_name not in consolidated_data:
-                    consolidated_data[base_sheet_name] = []
-                
-                consolidated_data[base_sheet_name].append(transformed_df)
-                print(f"Transformador aplicado exitosamente a {key}")
-                
-            except Exception as e:
-                print(f"Error al aplicar transformador a {key}: {e}")
-    
-    # Concatenar todos los DataFrames de cada tipo de hoja
-    final_consolidated = {}
-    for sheet_name, df_list in consolidated_data.items():
-        if df_list:
-            final_consolidated[sheet_name] = pd.concat(df_list, ignore_index=True)
-            print(f"Consolidado {sheet_name}: {final_consolidated[sheet_name].shape}")
-    
-    return final_consolidated
-
-def insert_consolidated_data(consolidated_datos):
-    """
-    Inserta los datos consolidados en la base de datos.
-    
-    Args:
-        consolidated_datos (dict): Diccionario con DataFrames consolidados
-    """
-    for sheet_name, df in consolidated_datos.items():
-        if sheet_name == "BB_ResumenGeneralMercado":
-            try:
-                if insert_data(df):
-                    print(f"\nDatos de {sheet_name} insertados exitosamente en la base de datos")
+                # Intentar insertar los datos transformados
+                if inserters[base_name](df_transformed):
+                    print(f"Datos insertados exitosamente para {base_name}")
                 else:
-                    print(f"\nError al insertar datos de {sheet_name} en la base de datos")
+                    print(f"Error al insertar datos para {base_name}")
+                    
             except Exception as e:
-                print(f"\nError durante la inserción de {sheet_name}: {e}")
+                print(f"Error al procesar {base_name}: {e}")
 
 if __name__ == "__main__":
-    # Extraer datos
-    datos = data_manager("2025-06-17", "2025-06-18")
-    
-    # Transformar y consolidar datos
-    consolidated_datos = apply_transformers_and_consolidate(datos)
-    
-    # Insertar datos en la base de datos
-    insert_consolidated_data(consolidated_datos)
-    
-    # Mostrar resultados
-    if "BB_ResumenGeneralMercado" in consolidated_datos:
-        print("\nBB_ResumenGeneralMercado consolidado:")
-        print(consolidated_datos["BB_ResumenGeneralMercado"].head())
+    start_date = "2025-03-18"
+    end_date = "2025-03-18"
+    data_manager(start_date, end_date) 

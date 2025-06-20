@@ -1,4 +1,2 @@
+SELECT * FROM bolsa_valores.dbo.BB_RFVTransPuestoBolsaMP
 
-
-
-SELECT * FROM bolsa_valores.dbo.BB_ResumenGeneralMercado
