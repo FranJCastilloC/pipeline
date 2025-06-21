@@ -21,26 +21,14 @@ def check_table_contents():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Contar registros
         cursor.execute("SELECT COUNT(*) FROM BB_RentaFijaOperacionesFuturasA")
         count = cursor.fetchone()[0]
-        print(f"\nTotal de registros en la tabla: {count}")
         
-        # Mostrar algunos registros
-        if count > 0:
-            cursor.execute("SELECT TOP 5 * FROM BB_RentaFijaOperacionesFuturasA ORDER BY fecha DESC")
-            rows = cursor.fetchall()
-            print("\nÚltimos 5 registros:")
-            for row in rows:
-                print(row)
-        else:
-            print("La tabla está vacía")
-            
         cursor.close()
         conn.close()
         
     except Exception as e:
-        print(f"Error al verificar tabla: {e}")
+        pass
 
 def insert_data(df: pd.DataFrame) -> bool:
     """
@@ -48,13 +36,6 @@ def insert_data(df: pd.DataFrame) -> bool:
     Si ya existe un registro con la misma clave primaria, lo actualiza.
     """
     try:
-        # Mostrar información del DataFrame antes de la inserción
-        print(f"\nDataFrame a insertar:")
-        print(f"- Forma: {df.shape}")
-        print(f"- Columnas: {list(df.columns)}")
-        print(f"- Primeras filas:")
-        print(df.head())
-        
         # TODO: Implementar lógica específica para BB_RentaFijaOperacionesFuturasA
         # Convertir tipos de datos según las columnas específicas de esta tabla
         # df['fecha'] = pd.to_datetime(df['fecha'], dayfirst=True)
@@ -98,7 +79,6 @@ def insert_data(df: pd.DataFrame) -> bool:
                 pass  # Placeholder - implementar lógica real
                 
             except Exception as row_error:
-                print(f"Error en fila {index}: {row_error}")
                 skipped_count += 1
                 continue
         
@@ -106,26 +86,14 @@ def insert_data(df: pd.DataFrame) -> bool:
         cursor.close()
         conn.close()
         
-        print(f"\nProceso completado:")
-        print(f"- Registros procesados: {len(df)}")
-        print(f"- Registros omitidos por errores: {skipped_count}")
-        print(f"- Registros procesados exitosamente: {len(df) - skipped_count}")
-        
-        # Verificar el contenido de la tabla después de la inserción
-        print("\nVerificando contenido de la tabla después de la inserción:")
         check_table_contents()
-        
         return True
         
     except Exception as e:
-        print(f"\nError al insertar datos:")
-        print(f"Tipo de error: {type(e).__name__}")
-        print(f"Mensaje de error: {str(e)}")
-        
         try:
             cursor.close()
             conn.close()
         except:
             pass
         
-        return False 
+        return False

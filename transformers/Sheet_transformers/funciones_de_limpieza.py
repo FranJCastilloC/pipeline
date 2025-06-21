@@ -78,6 +78,7 @@ class LimpiezaExcel:
             if len(idxs_final) < n_final:
                 raise ValueError(f"No se encontró la {n_final}-ésima coincidencia para '{palabra_final}'")
             idx_final = idxs_final[n_final - 1]
+            
             return df.iloc[idx_inicio + 1: idx_final].reset_index(drop=True)
         else:
             return df.iloc[idx_inicio + 1:].reset_index(drop=True)
@@ -88,6 +89,13 @@ class LimpiezaExcel:
         """
         # Seleccionar columnas específicas por posición
         df = df.iloc[:, columnas].reset_index(drop=True)  # Fecha está en la columna 0
+        return df
+    
+    def eliminar_filas_con_valor_en_columna(self, df: pd.DataFrame, columna: str, valor: str) -> pd.DataFrame:
+        """
+        Elimina las filas que contienen el valor en la columna especificada.
+        """
+        df = df[df[columna] != valor]
         return df
 
 

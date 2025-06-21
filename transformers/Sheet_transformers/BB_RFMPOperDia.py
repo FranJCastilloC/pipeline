@@ -1,5 +1,12 @@
 import pandas as pd
-from ..base_transformer import BaseTransformer
+import sys
+import os
+
+# Agregar el directorio raíz del proyecto al path para importaciones
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+
+from transformers.Sheet_transformers.funciones_de_limpieza import LimpiezaExcel
 
 def transform_rfmp_oper_dia(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -11,56 +18,33 @@ def transform_rfmp_oper_dia(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame transformado
     """
+    df.drop(columns=[df.columns[5]], inplace=True)
+    
+    df.columns = [
+        "numero_operacion",
+        "rueda",
+        "Cod_Local",
+        "Cod_ISIN",
+        "Cod_Emisor",
+        "Fecha_Venc",
+        "Frec_Pago",
+        "Tasa_Cupon",
+        "Nom_Unit",
+        "Valor_Negociado",
+        "Precio",
+        "Valor_Transado",
+        "Rend_Equiv",
+        "Mon",
+        "Equiv_en_DOP",
+        "Fecha_Liq",
+        "Dias_Venc",
+        "Fecha"
+    ]
+
+
     # Crear una copia del DataFrame
-    df_transformed = df.copy()
-    
-    # Renombrar columnas para estandarizar
-    column_mapping = {
-        'Emisor': 'emisor',
-        'Código': 'codigo',
-        'Instrumento': 'instrumento',
-        'Fecha de Emisión': 'fecha_emision',
-        'Fecha de Vencimiento': 'fecha_vencimiento',
-        'Moneda': 'moneda',
-        'Valor Nominal': 'valor_nominal',
-        'Tasa de Interés': 'tasa_interes',
-        'Precio': 'precio',
-        'Rendimiento': 'rendimiento',
-        'Valor Transado': 'valor_transado',
-        'Cantidad de Operaciones': 'cantidad_operaciones'
-    }
-    df_transformed = df_transformed.rename(columns=column_mapping)
-    
-    # Convertir fechas
-    date_columns = ['fecha_emision', 'fecha_vencimiento']
-    for col in date_columns:
-        if col in df_transformed.columns:
-            df_transformed[col] = pd.to_datetime(df_transformed[col], errors='coerce')
-    
-    # Convertir columnas numéricas
-    numeric_columns = ['valor_nominal', 'tasa_interes', 'precio', 'rendimiento', 'valor_transado', 'cantidad_operaciones']
-    for col in numeric_columns:
-        if col in df_transformed.columns:
-            # Limpiar y convertir a numérico
-            df_transformed[col] = pd.to_numeric(
-                df_transformed[col].astype(str)
-                .str.replace(',', '')
-                .str.replace('%', '')
-                .str.replace('$', ''),
-                errors='coerce'
-            )
-    
-    # Convertir tasas de porcentaje a decimal
-    percentage_columns = ['tasa_interes', 'rendimiento']
-    for col in percentage_columns:
-        if col in df_transformed.columns:
-            df_transformed[col] = df_transformed[col] / 100
-    
-    # Eliminar filas con valores nulos en columnas críticas
-    critical_columns = ['emisor', 'codigo', 'valor_transado']
-    df_transformed = df_transformed.dropna(subset=critical_columns, how='any')
-    
-    # Ordenar por valor transado descendente
-    df_transformed = df_transformed.sort_values('valor_transado', ascending=False)
-    
-    return df_transformed 
+    df = df.dropna(subset=[df.columns[0]])
+    df = df.iloc[:-1]
+    df = LimpiezaExcel().recortar_df(df, columna=0, palabra_inicial="Número Operación", palabra_final=None, n_inicial=1, n_final=1)
+    return df
+

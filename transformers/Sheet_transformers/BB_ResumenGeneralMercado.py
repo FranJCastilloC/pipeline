@@ -55,15 +55,11 @@ def transform_resumen_general_mercado(df: pd.DataFrame) -> pd.DataFrame:
         ]
         # Crear máscara para identificar filas a eliminar
         filas_a_eliminar = (df.iloc[:, 0].str.contains('|'.join(nombres_a_eliminar), na=False))
- 
-  
         
         # Eliminar las filas que contengan esos nombres
         df_limpio = df[~filas_a_eliminar].reset_index(drop=True)
         
         return df_limpio
-
-
 
     def seleccionar_columnas(df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -105,10 +101,3 @@ def transform_resumen_general_mercado(df: pd.DataFrame) -> pd.DataFrame:
     df = seleccionar_columnas(df)
     df = definir_columnas(df)
     return df
-
-
-
-
-
-
-

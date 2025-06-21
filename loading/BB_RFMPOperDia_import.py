@@ -1,17 +1,6 @@
 import pandas as pd
 import pyodbc
-
-def get_db_connection():
-    """
-    Crea la conexión a la base de datos usando autenticación de Windows.
-    """
-    conn_str = (
-        "Driver={SQL Server};"
-        "Server=F_CASTILLO;"
-        "Database=bolsa_valores;"
-        "Trusted_Connection=yes;"
-    )
-    return pyodbc.connect(conn_str)
+from loading.conexion_db import get_db_connection
 
 def check_table_contents():
     """
@@ -21,26 +10,19 @@ def check_table_contents():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Contar registros
         cursor.execute("SELECT COUNT(*) FROM BB_RFMPOperDia")
         count = cursor.fetchone()[0]
-        print(f"\nTotal de registros en la tabla: {count}")
         
-        # Mostrar algunos registros
         if count > 0:
             cursor.execute("SELECT TOP 5 * FROM BB_RFMPOperDia ORDER BY fecha DESC")
             rows = cursor.fetchall()
-            print("\nÚltimos 5 registros:")
-            for row in rows:
-                print(row)
         else:
-            print("La tabla está vacía")
+            pass
             
         cursor.close()
         conn.close()
-        
     except Exception as e:
-        print(f"Error al verificar tabla: {e}")
+        pass
 
 def insert_data(df: pd.DataFrame) -> bool:
     """
@@ -48,57 +30,98 @@ def insert_data(df: pd.DataFrame) -> bool:
     Si ya existe un registro con la misma clave primaria, lo actualiza.
     """
     try:
-        # Mostrar información del DataFrame antes de la inserción
-        print(f"\nDataFrame a insertar:")
-        print(f"- Forma: {df.shape}")
-        print(f"- Columnas: {list(df.columns)}")
-        print(f"- Primeras filas:")
-        print(df.head())
+        # Conversiones y validaciones
+        # Conversiones de fechas
+        df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
+        df['Fecha_Venc'] = pd.to_datetime(df['Fecha_Venc'], errors='coerce')
+        df['Fecha_Liq'] = pd.to_datetime(df['Fecha_Liq'], errors='coerce')
+        df.dropna(subset=['Fecha'], inplace=True)
         
-        # TODO: Implementar lógica específica para BB_RFMPOperDia
-        # Convertir tipos de datos según las columnas específicas de esta tabla
-        # df['fecha'] = pd.to_datetime(df['fecha'], dayfirst=True)
-        # df['columna_numerica'] = pd.to_numeric(df['columna_numerica'])
-        
-        # Crear conexión
+        # Conversiones numéricas
+        df['Valor_Negociado'] = pd.to_numeric(df['Valor_Negociado'], errors='coerce').fillna(0)
+        df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0)
+        df['Frec_Pago'] = pd.to_numeric(df['Frec_Pago'], errors='coerce').fillna(0)
+        df['Valor_Transado'] = pd.to_numeric(df['Valor_Transado'], errors='coerce').fillna(0)
+        df['Equiv_en_DOP'] = pd.to_numeric(df['Equiv_en_DOP'], errors='coerce').fillna(0)
+        df['Tasa_Cupon'] = pd.to_numeric(df['Tasa_Cupon'], errors='coerce').fillna(0)
+        df['Rend_Equiv'] = pd.to_numeric(df['Rend_Equiv'], errors='coerce').fillna(0)
+        df['Dias_Venc'] = pd.to_numeric(df['Dias_Venc'], errors='coerce').fillna(0)
+        df['Nom_Unit'] = pd.to_numeric(df['Nom_Unit'], errors='coerce').fillna(0)
+
         conn = get_db_connection()
         cursor = conn.cursor()
-
-        inserted_count = 0
-        updated_count = 0
+        
+        processed_count = 0
         skipped_count = 0
 
-        # TODO: Implementar lógica de inserción específica para esta tabla
-        # Insertar datos uno por uno para mejor control de errores
         for index, row in df.iterrows():
             try:
-                # TODO: Implementar MERGE específico para BB_RFMPOperDia
-                # cursor.execute("""
-                #     MERGE BB_RFMPOperDia AS target
-                #     USING (SELECT ? AS campo1, ? AS fecha) AS source
-                #     ON target.campo1 = source.campo1 AND target.fecha = source.fecha
-                #     WHEN MATCHED THEN
-                #         UPDATE SET 
-                #             campo2 = ?,
-                #             campo3 = ?
-                #     WHEN NOT MATCHED THEN
-                #         INSERT (campo1, campo2, campo3, fecha)
-                #         VALUES (?, ?, ?, ?);
-                # """, (
-                #     row['campo1'],
-                #     row['fecha'].strftime('%Y-%m-%d'),
-                #     float(row['campo2']),
-                #     float(row['campo3']),
-                #     row['campo1'],
-                #     float(row['campo2']),
-                #     float(row['campo3']),
-                #     row['fecha'].strftime('%Y-%m-%d')
-                # ))
+                cursor.execute("""
+                    MERGE BB_RFMPOperDia AS target
+                    USING (SELECT ? AS numero_operacion, ? AS fecha) AS source
+                    ON target.numero_operacion = source.numero_operacion AND target.fecha = source.fecha
+                    WHEN MATCHED THEN
+                        UPDATE SET 
+                            rueda = ?,
+                            Cod_Local = ?,
+                            Cod_ISIN = ?,
+                            Cod_Emisor = ?,
+                            Fecha_Venc = ?,
+                            Frec_Pago = ?,
+                            Tasa_Cupon = ?,
+                            Nom_Unit = ?,
+                            Valor_Negociado = ?,
+                            Precio = ?,
+                            Valor_Transado = ?,
+                            Rend_Equiv = ?,
+                            Mon = ?,
+                            Equiv_en_DOP = ?,
+                            Fecha_Liq = ?,
+                            Dias_Venc = ?
+                    WHEN NOT MATCHED THEN
+                        INSERT (numero_operacion, rueda, Cod_Local, Cod_ISIN, Cod_Emisor, Fecha_Venc, Frec_Pago, Tasa_Cupon, Nom_Unit, Valor_Negociado, Precio, Valor_Transado, Rend_Equiv, Mon, Equiv_en_DOP, Fecha_Liq, Dias_Venc, fecha)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                row['numero_operacion'],
+                row['Fecha'].strftime('%Y-%m-%d'),
+                row['rueda'],
+                row['Cod_Local'],
+                row['Cod_ISIN'],
+                row['Cod_Emisor'],
+                row['Fecha_Venc'].strftime('%Y-%m-%d') if pd.notna(row['Fecha_Venc']) else None,
+                row['Frec_Pago'],
+                row['Tasa_Cupon'],
+                row['Nom_Unit'],
+                row['Valor_Negociado'],
+                row['Precio'],
+                row['Valor_Transado'],
+                row['Rend_Equiv'],
+                row['Mon'],
+                row['Equiv_en_DOP'],
+                row['Fecha_Liq'].strftime('%Y-%m-%d') if pd.notna(row['Fecha_Liq']) else None,
+                row['Dias_Venc'],
+                row['numero_operacion'],
+                row['rueda'],
+                row['Cod_Local'],
+                row['Cod_ISIN'],
+                row['Cod_Emisor'],
+                row['Fecha_Venc'].strftime('%Y-%m-%d') if pd.notna(row['Fecha_Venc']) else None,
+                row['Frec_Pago'],
+                row['Tasa_Cupon'],
+                row['Nom_Unit'],
+                row['Valor_Negociado'],
+                row['Precio'],
+                row['Valor_Transado'],
+                row['Rend_Equiv'],
+                row['Mon'],
+                row['Equiv_en_DOP'],
+                row['Fecha_Liq'].strftime('%Y-%m-%d') if pd.notna(row['Fecha_Liq']) else None,
+                row['Dias_Venc'],
+                row['Fecha'].strftime('%Y-%m-%d'))
                 
-                pass  # Placeholder - implementar lógica real
-                
+                if cursor.rowcount > 0:
+                    processed_count += 1
             except Exception as row_error:
-                print(f"Error en fila {index}: {row_error}")
                 skipped_count += 1
                 continue
         
@@ -106,26 +129,8 @@ def insert_data(df: pd.DataFrame) -> bool:
         cursor.close()
         conn.close()
         
-        print(f"\nProceso completado:")
-        print(f"- Registros procesados: {len(df)}")
-        print(f"- Registros omitidos por errores: {skipped_count}")
-        print(f"- Registros procesados exitosamente: {len(df) - skipped_count}")
-        
-        # Verificar el contenido de la tabla después de la inserción
-        print("\nVerificando contenido de la tabla después de la inserción:")
         check_table_contents()
-        
         return True
         
     except Exception as e:
-        print(f"\nError al insertar datos:")
-        print(f"Tipo de error: {type(e).__name__}")
-        print(f"Mensaje de error: {str(e)}")
-        
-        try:
-            cursor.close()
-            conn.close()
-        except:
-            pass
-        
-        return False 
+        return False

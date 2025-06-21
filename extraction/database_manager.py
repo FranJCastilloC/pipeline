@@ -1,4 +1,4 @@
-from extraction.scraper import main
+from scraper import main
 import datetime
 import sys
 import os
@@ -6,11 +6,10 @@ import os
 # Agregar el directorio raíz del proyecto al path para importaciones
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-# Importar transformadores y funciones de inserción
-from transformers.Sheet_transformers.BB_ResumenGeneralMercado import transform_resumen_general_mercado
-from transformers.Sheet_transformers.BB_RFVTransPuestoBolsaMP import transform_rfv_trans_puesto_bolsa_mp
+# Importar funciones de inserción
 from loading.BB_ResumenGeneralMercado_import import insert_data as insert_resumen_general
 from loading.BB_RFVTransPuestoBolsaMP_import import insert_data as insert_rfv_trans_puesto
+from loading.BB_RFMPOperDia_import import insert_data as insert_rfmp_oper_dia
 
 def get_dataset(start_date, end_date, sheet_name):
     """
@@ -27,6 +26,11 @@ def data_manager(start_date, end_date):
     """
     Gestiona la extracción, transformación e inserción de datos de los boletines.
     """
+    # Importar transformadores aquí para evitar importación circular
+    from transformers.Sheet_transformers.BB_ResumenGeneralMercado import transform_resumen_general_mercado
+    from transformers.Sheet_transformers.BB_RFVTransPuestoBolsaMP import transform_rfv_trans_puesto_bolsa_mp
+    from transformers.Sheet_transformers.BB_RFMPOperDia import transform_rfmp_oper_dia
+    
     data_sets = {
         "BB_ResumenGeneralMercado",
         "BB_RFVTransPuestoBolsaMP",
@@ -42,6 +46,7 @@ def data_manager(start_date, end_date):
     transformers = {
         "BB_ResumenGeneralMercado": transform_resumen_general_mercado,
         "BB_RFVTransPuestoBolsaMP": transform_rfv_trans_puesto_bolsa_mp,
+        "BB_RFMPOperDia": transform_rfmp_oper_dia,
         # Agregar más transformadores aquí cuando estén disponibles
     }
     
@@ -49,6 +54,7 @@ def data_manager(start_date, end_date):
     inserters = {
         "BB_ResumenGeneralMercado": insert_resumen_general,
         "BB_RFVTransPuestoBolsaMP": insert_rfv_trans_puesto,
+        "BB_RFMPOperDia": insert_rfmp_oper_dia,
         # Agregar más funciones de inserción aquí cuando estén disponibles
     }
     
@@ -75,6 +81,6 @@ def data_manager(start_date, end_date):
                 print(f"Error al procesar {base_name}: {e}")
 
 if __name__ == "__main__":
-    start_date = "2025-03-18"
-    end_date = "2025-03-18"
+    start_date = "2025-03-17"
+    end_date = "2025-03-17"
     data_manager(start_date, end_date) 
